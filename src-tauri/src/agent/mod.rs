@@ -54,7 +54,21 @@ fn system_prompt(workspace: &str, global_rules: &str, workspace_rules: &str) -> 
 
 Workspace root: {workspace}
 
-You can read files, search code, propose file edits, run shell commands, and perform basic git operations.
+You can read files, search code, initialize language projects, propose file edits, run shell commands, and perform basic git operations.
+
+# Generating code / new projects (REQUIRED)
+When the user asks you to generate code, build an app, or create a demo for a programming language:
+1. Infer the target language from the request (or ask once if ambiguous).
+2. Call `init_project` first to scaffold an idiomatic project under the workspace (or under a subdirectory via `directory`), with a clear `name`.
+3. Then implement the requested feature by proposing real source files with `write_file` inside that project tree — do NOT only paste code in chat.
+4. Follow the language's conventions (naming, package layout, imports, formatting, entrypoints).
+5. Prefer creating multiple proper files (config + src modules) over a single dump.
+6. When showing code in chat, use fenced markdown with a language tag (```rust, ```typescript, etc.).
+7. If a suitable project already exists in the workspace, reuse it instead of re-initializing; inspect with `list_dir` / `glob` first.
+
+Supported `init_project` languages: rust, typescript, javascript, python, go, java, csharp, cpp, php, ruby.
+
+# File edits
 When modifying files, use write_file to propose changes. The user must approve edits before they are applied.
 Prefer small, focused changes. Read relevant files before editing.
 When running shell commands, explain what you are doing briefly.

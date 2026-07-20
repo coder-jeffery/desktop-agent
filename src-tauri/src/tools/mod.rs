@@ -10,9 +10,11 @@ use tokio::time::{Duration, timeout};
 use walkdir::WalkDir;
 
 mod sandbox;
+mod init_project;
 
 use sandbox::{WorkspaceSandbox, is_shell_command_blocked};
 use crate::edits::{EditStore, ProposedEdit};
+use init_project::init_project;
 
 const MAX_READ_BYTES: u64 = 256 * 1024;
 
@@ -36,14 +38,36 @@ pub fn tool_definitions() -> Vec<crate::llm::types::ToolDefinition> {
         ),
         tool(
             "write_file",
-            "Propose writing or replacing a file. Changes require user approval before being applied.",
+            "Propose writing or replacing a file. Changes require user approval before being applied. Prefer idiomatic language style and place files inside the initialized project directory.",
             json!({
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string"},
+                    "path": {"type": "string", "description": "Relative path from workspace root, e.g. my-app/src/main.rs"},
                     "content": {"type": "string", "description": "Full new file content"}
                 },
                 "required": ["path", "content"]
+            }),
+        ),
+        tool(
+            "init_project",
+            "Initialize a new idiomatic programming-language project under the workspace (scaffold config + entry files). Use this BEFORE writing feature code when the user asks to generate an app/project.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "language": {
+                        "type": "string",
+                        "description": "Programming language: rust, typescript, javascript, python, go, java, csharp, cpp, php, ruby"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Project folder/package name, e.g. hello-api"
+                    },
+                    "directory": {
+                        "type": "string",
+                        "description": "Parent directory relative to workspace root. Default '.' (workspace root)."
+                    }
+                },
+                "required": ["language", "name"]
             }),
         ),
         tool(
@@ -140,6 +164,7 @@ pub async fn execute_tool(
     match name {
         "read_file" => read_file(ctx, &args),
         "write_file" => write_file(ctx, &args),
+        "init_project" => init_project(ctx, &args),
         "list_dir" => list_dir(ctx, &args),
         "glob" => glob_search(ctx, &args),
         "grep" => grep_search(ctx, &args),

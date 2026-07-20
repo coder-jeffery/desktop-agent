@@ -8,7 +8,7 @@ Chat with an AI agent that can read and search your workspace, propose file edit
 
 - **Multi-model**: Anthropic Claude, OpenAI, domestic providers (DeepSeek, Qwen, Moonshot, ZhiPu, SiliconFlow), and local **Ollama**
 - **Streaming responses** with live tool-call visibility
-- **Tools**: `read_file`, `write_file`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`, `git_commit`
+- **Tools**: `read_file`, `write_file`, `init_project`, `list_dir`, `glob`, `grep`, `run_shell`, `git_status`, `git_diff`, `git_commit`
 - **Diff preview** before applying file changes
 - **Workspace sandbox** — tools cannot access paths outside the selected folder
 
@@ -22,8 +22,9 @@ Chat with an AI agent that can read and search your workspace, propose file edit
 ## Sessions, Repositories & Rules
 
 - **New Agent (⌘N)**: create a new chat session bound to the active repository
-- **Agents list**: switch or delete sessions; messages persist locally
+- **Agents list**: switch or delete sessions; full chat history is stored in a local **SQLite** database and restored on next launch
 - **Repositories**: add multiple project folders, filter, switch active workspace
+- **Voice input**: microphone button in the composer (Web Speech API, zh-CN)
 - **Customize / Rules**:
   - Global rules (all repos)
   - Workspace rules saved to `.desktop-agent/rules.md` in the selected repo
@@ -78,10 +79,11 @@ For Ollama, click **从 Ollama 拉取模型列表** in Settings after `ollama se
 React UI  ←invoke/events→  Rust Agent Core
                               ├── LLM providers (Anthropic / OpenAI-compat)
                               ├── Tool runtime (FS, shell, git, search)
-                              └── Proposed edit queue
+                              ├── Proposed edit queue
+                              └── SQLite (sessions, messages, repositories)
 ```
 
-API keys are stored locally via Tauri Store (not committed to git).
+Conversation history lives in `desktop_agent.db` under the app data directory. API keys are stored locally via Tauri Store (not committed to git). Existing `app_data.json` is migrated into SQLite on first launch.
 
 ## Security notes
 

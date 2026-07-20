@@ -46,31 +46,63 @@ impl WorkspaceSandbox {
         self.ensure_within(&joined)
     }
 
+    /// Resolve a path that may not exist yet, preserving nested segments under the workspace.
     pub fn ensure_within(&self, path: &Path) -> Result<PathBuf, SandboxError> {
-        let canonical = if path.exists() {
-            path.canonicalize()?
+        if path.exists() {
+            let canonical = path.canonicalize()?;
+            if !canonical.starts_with(&self.root) {
+                return Err(SandboxError::EscapesWorkspace(
+                    canonical.display().to_string(),
+                ));
+            }
+            return Ok(canonical);
+        }
+
+        let mut missing = Vec::new();
+        let mut cursor = path;
+        loop {
+            if cursor.exists() {
+                break;
+            }
+            let name = cursor.file_name().ok_or_else(|| {
+                SandboxError::InvalidPath(path.display().to_string())
+            })?;
+            missing.push(name.to_os_string());
+            match cursor.parent() {
+                Some(parent) if !parent.as_os_str().is_empty() => cursor = parent,
+                _ => break,
+            }
+        }
+
+        let base = if cursor.exists() {
+            cursor.canonicalize()?
         } else {
-            let parent = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .unwrap_or(&self.root);
-            let parent_canonical = if parent.exists() {
-                parent.canonicalize()?
-            } else {
-                self.root.clone()
-            };
-            let file_name = path
-                .file_name()
-                .ok_or_else(|| SandboxError::InvalidPath(path.display().to_string()))?;
-            parent_canonical.join(file_name)
+            self.root.clone()
         };
 
-        if !canonical.starts_with(&self.root) {
+        if !base.starts_with(&self.root) {
+            return Err(SandboxError::EscapesWorkspace(base.display().to_string()));
+        }
+
+        let mut resolved = base;
+        for component in missing.into_iter().rev() {
+            resolved.push(component);
+        }
+
+        // Final containment check using logical path under root
+        let rel = resolved
+            .strip_prefix(&self.root)
+            .map_err(|_| SandboxError::EscapesWorkspace(resolved.display().to_string()))?;
+        if rel
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
             return Err(SandboxError::EscapesWorkspace(
-                canonical.display().to_string(),
+                resolved.display().to_string(),
             ));
         }
-        Ok(canonical)
+
+        Ok(resolved)
     }
 
     pub fn relative_display(&self, path: &Path) -> String {
@@ -100,4 +132,29 @@ pub fn is_shell_command_blocked(command: &str) -> Option<&'static str> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn resolves_nested_nonexistent_paths() {
+        let dir = std::env::temp_dir().join(format!(
+            "desktop-agent-sandbox-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let sandbox = WorkspaceSandbox::new(dir.clone()).unwrap();
+        let resolved = sandbox
+            .resolve("projects/demo/src/main.rs")
+            .unwrap();
+        assert_eq!(
+            resolved,
+            dir.canonicalize().unwrap().join("projects/demo/src/main.rs")
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

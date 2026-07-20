@@ -126,6 +126,16 @@ export async function setWorkspaceRules(
   return invoke("set_workspace_rules", { workspacePath, content });
 }
 
+export async function transcribeAudio(
+  audioBase64: string,
+  locale?: string | null,
+): Promise<string> {
+  return invoke<string>("transcribe_audio", {
+    audioBase64,
+    locale: locale ?? "zh-CN",
+  });
+}
+
 export function toBackendHistory(messages: ChatMessage[]) {
   return messages.map((m) => ({
     role: m.role,

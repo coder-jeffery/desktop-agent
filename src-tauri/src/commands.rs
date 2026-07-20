@@ -310,6 +310,31 @@ async fn set_workspace_rules(workspace_path: String, content: String) -> Result<
     persistence::write_workspace_rules(&workspace_path, &content)
 }
 
+#[tauri::command]
+async fn transcribe_audio(
+    app: AppHandle,
+    audio_base64: String,
+    locale: Option<String>,
+) -> Result<String, String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(audio_base64.trim())
+        .map_err(|e| format!("invalid audio payload: {e}"))?;
+    if bytes.len() < 44 {
+        return Err("录音太短或无效".into());
+    }
+    let settings = load_settings(&app)?;
+    let locale = locale.unwrap_or_else(|| "zh-CN".into());
+    crate::speech_native::transcribe_wav(
+        &bytes,
+        settings.provider,
+        &settings.api_key,
+        settings.base_url.as_deref(),
+        &locale,
+    )
+    .await
+}
+
 fn load_settings(app: &AppHandle) -> Result<AppSettings, String> {
     let store = app.store(SETTINGS_STORE).map_err(|e| e.to_string())?;
     match store.get("settings") {
@@ -345,5 +370,6 @@ pub fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wr
         get_rules,
         set_global_rules,
         set_workspace_rules,
+        transcribe_audio,
     ])
 }

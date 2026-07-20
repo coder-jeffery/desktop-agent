@@ -1,6 +1,11 @@
 import type { ProposedEdit } from "../../lib/types";
 import { applyEdit, rejectEdit } from "../../lib/tauri";
 import { useChatStore } from "../../stores";
+import {
+  languageFileFormat,
+  languageFromPath,
+  languageLabel,
+} from "../../lib/language";
 
 interface DiffPreviewProps {
   edit: ProposedEdit;
@@ -8,6 +13,9 @@ interface DiffPreviewProps {
 
 export function DiffPreview({ edit }: DiffPreviewProps) {
   const { removePendingEdit, setActiveEdit } = useChatStore();
+  const lang = languageFromPath(edit.path);
+  const label = languageLabel(lang);
+  const format = languageFileFormat(lang, edit.path);
 
   async function handleApply() {
     await applyEdit(edit.id);
@@ -26,8 +34,12 @@ export function DiffPreview({ edit }: DiffPreviewProps) {
       <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
         <div>
           <div className="text-sm font-medium">{edit.summary}</div>
-          <div className="font-mono text-xs text-[var(--text-muted)]">
-            {edit.path}
+          <div className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
+            <span>{edit.path}</span>
+            <span className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text)]">
+              {label}
+            </span>
+            <span className="text-[10px]">{format}</span>
           </div>
         </div>
         <div className="flex gap-2">
@@ -50,8 +62,12 @@ export function DiffPreview({ edit }: DiffPreviewProps) {
       <pre className="max-h-64 overflow-auto p-4 font-mono text-xs leading-relaxed text-[var(--text-muted)]">
         {edit.diff.split("\n").map((line, i) => {
           let color = "text-[var(--text-muted)]";
-          if (line.startsWith("+")) color = "text-[var(--accent)]";
-          if (line.startsWith("-")) color = "text-[var(--danger)]";
+          if (line.startsWith("+") && !line.startsWith("+++")) {
+            color = "text-[var(--accent)]";
+          }
+          if (line.startsWith("-") && !line.startsWith("---")) {
+            color = "text-[var(--danger)]";
+          }
           if (line.startsWith("@@")) color = "text-[var(--warning)]";
           return (
             <div key={`${i}-${line.slice(0, 12)}`} className={color}>
