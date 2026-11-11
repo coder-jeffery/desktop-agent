@@ -90,3 +90,16 @@ Conversation history lives in `desktop_agent.db` under the app data directory. A
 - Shell commands run in the workspace with a basic blocklist and 30s timeout
 - File writes require explicit user approval via the diff panel
 - `git push` is not exposed in v1
+
+## UI
+
+<div align="center">
+<img src="./setting-apikey.png" alt="图1" width="880">
+</br>
+<hr style="border: none; height: 1px; background-color: #ccc;"></br>
+<img src="./choose model.png" alt="图1" width="880">
+</br>
+<hr style="border: none; height: 1px; background-color: #ccc;"></br>
+<img src="./prompt.png" alt="图1" width="880">
+
+</div>
