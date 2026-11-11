@@ -5,6 +5,7 @@ mod llm;
 mod persistence;
 mod speech_native;
 mod tools;
+mod workspace_paths;
 
 use agent::AgentState;
 use tauri::Manager;

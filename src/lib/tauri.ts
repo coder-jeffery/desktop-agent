@@ -77,6 +77,14 @@ export async function getActiveRepository(): Promise<Repository | null> {
   return invoke<Repository | null>("get_active_repository");
 }
 
+export async function getDefaultWorkspacePath(): Promise<string> {
+  return invoke<string>("get_default_workspace_path");
+}
+
+export async function ensureDefaultWorkspace(): Promise<Repository> {
+  return invoke<Repository>("ensure_default_workspace");
+}
+
 export async function listSessions(): Promise<Session[]> {
   return invoke<Session[]>("list_sessions");
 }

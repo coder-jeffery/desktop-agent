@@ -20,6 +20,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [booted, setBooted] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   const { settings, requireApproval } = useSettingsStore();
   const { activeEdit } = useChatStore();
   const createNew = useSessionStore((s) => s.createNew);
@@ -28,10 +29,17 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      await loadSettingsOnBoot();
-      await bootstrapAppData();
-      setBooted(true);
-    })().catch(console.error);
+      try {
+        await loadSettingsOnBoot();
+        await bootstrapAppData();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Boot failed:", err);
+        setBootError(msg);
+      } finally {
+        setBooted(true);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -51,6 +59,29 @@ function App() {
     return (
       <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">
         Loading…
+      </div>
+    );
+  }
+
+  if (bootError) {
+    const missingRepo = bootError.includes("Not a directory");
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-sm">
+        <p className="text-[var(--danger)]">启动失败</p>
+        <p className="max-w-md break-all text-[var(--text-muted)]">
+          {bootError}
+        </p>
+        {missingRepo ? (
+          <p className="max-w-md text-xs text-[var(--text-muted)]">
+            本地数据库里记录的仓库路径已不存在（例如换过电脑或移动过项目）。重启
+            Tauri 后会自动跳过无效路径；在侧栏删除旧仓库并重新添加当前项目目录即可。
+          </p>
+        ) : (
+          <p className="max-w-md text-xs text-[var(--text-muted)]">
+            请用 <code className="text-[var(--text)]">pnpm tauri dev</code>{" "}
+            打开桌面窗口（不要只访问浏览器里的 localhost:1420）。
+          </p>
+        )}
       </div>
     );
   }

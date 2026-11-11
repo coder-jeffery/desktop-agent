@@ -1,0 +1,35 @@
+"$schema" = "../gen/schemas/desktop-schema.json"
+
+[[permission]]
+identifier = "allow-app-commands"
+description = "Allow desktop-agent custom invoke commands"
+commands.allow = [
+  "get_settings",
+  "save_settings",
+  "set_workspace",
+  "get_workspace",
+  "send_message",
+  "cancel_agent",
+  "list_pending_edits",
+  "apply_edit",
+  "reject_edit",
+  "list_ollama_models",
+  "get_git_branch",
+  "list_repositories",
+  "add_repository",
+  "remove_repository",
+  "set_active_repository",
+  "get_active_repository",
+  "get_default_workspace_path",
+  "ensure_default_workspace",
+  "list_sessions",
+  "create_session",
+  "update_session",
+  "delete_session",
+  "set_active_session",
+  "get_active_session",
+  "get_rules",
+  "set_global_rules",
+  "set_workspace_rules",
+  "transcribe_audio",
+]

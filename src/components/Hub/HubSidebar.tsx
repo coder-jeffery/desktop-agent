@@ -12,6 +12,7 @@ import {
   folderIdsToReveal,
   type RepoTreeNode,
 } from "../../lib/repoTree";
+import { getDefaultWorkspacePath } from "../../lib/tauri";
 
 interface HubSidebarProps {
   onOpenSettings: () => void;
@@ -76,10 +77,17 @@ export function HubSidebar({ onOpenSettings, onOpenRules }: HubSidebarProps) {
   }
 
   async function handleAddRepo() {
+    let defaultPath: string | undefined;
+    try {
+      defaultPath = await getDefaultWorkspacePath();
+    } catch {
+      defaultPath = path ?? undefined;
+    }
     const selected = await open({
       directory: true,
       multiple: false,
       title: "Add repository",
+      defaultPath,
     });
     if (typeof selected === "string") {
       await addRepo(selected);

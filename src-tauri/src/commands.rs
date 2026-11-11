@@ -259,6 +259,32 @@ async fn get_active_repository(app: AppHandle) -> Result<Option<Repository>, Str
 }
 
 #[tauri::command]
+fn get_default_workspace_path(app: AppHandle) -> Result<String, String> {
+    crate::workspace_paths::default_workspace_dir(&app)
+        .map(|p| p.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn ensure_default_workspace(
+    app: AppHandle,
+    state: State<'_, AgentState>,
+) -> Result<Repository, String> {
+    let path_buf = crate::workspace_paths::ensure_default_workspace_dir(&app)?;
+    let path = path_buf.to_string_lossy().to_string();
+
+    let repos = persistence::list_repositories(&app)?;
+    if let Some(repo) = repos.into_iter().find(|r| r.path == path) {
+        let active = persistence::set_active_repository(&app, repo.id)?;
+        *state.workspace.write() = Some(active.path.clone());
+        return Ok(active);
+    }
+
+    let repo = persistence::add_repository(&app, path)?;
+    *state.workspace.write() = Some(repo.path.clone());
+    Ok(repo)
+}
+
+#[tauri::command]
 async fn list_sessions(app: AppHandle) -> Result<Vec<Session>, String> {
     persistence::list_sessions(&app)
 }
@@ -361,6 +387,8 @@ pub fn register(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wr
         remove_repository,
         set_active_repository,
         get_active_repository,
+        get_default_workspace_path,
+        ensure_default_workspace,
         list_sessions,
         create_session,
         update_session,

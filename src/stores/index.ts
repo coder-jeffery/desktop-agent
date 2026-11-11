@@ -18,6 +18,7 @@ import {
   setActiveRepository as apiSetActiveRepository,
   setActiveSession as apiSetActiveSession,
   setWorkspace,
+  ensureDefaultWorkspace,
   updateSession as apiUpdateSession,
   titleFromMessage,
 } from "../lib/tauri";
@@ -306,14 +307,54 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 }));
 
+async function trySetWorkspace(path: string): Promise<boolean> {
+  try {
+    await setWorkspace(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Pick a repo whose path still exists on disk; sync active repo in SQLite when falling back. */
+async function resolveActiveRepository(
+  repositories: Repository[],
+  stored: Repository | null,
+): Promise<Repository | null> {
+  const order: Repository[] = [];
+  const seen = new Set<string>();
+  if (stored) {
+    order.push(stored);
+    seen.add(stored.id);
+  }
+  for (const repo of repositories) {
+    if (!seen.has(repo.id)) {
+      order.push(repo);
+    }
+  }
+
+  for (const repo of order) {
+    if (await trySetWorkspace(repo.path)) {
+      if (stored?.id !== repo.id) {
+        return apiSetActiveRepository(repo.id);
+      }
+      return repo;
+    }
+  }
+  return null;
+}
+
 export async function bootstrapAppData() {
   const { getActiveRepository, getActiveSession } = await import("../lib/tauri");
-  const repositories = await listRepositories();
-  let activeRepo = (await getActiveRepository()) ?? repositories[0] ?? null;
+  let repositories = await listRepositories();
+  const storedActive = await getActiveRepository();
+  let activeRepo = await resolveActiveRepository(repositories, storedActive);
 
-  if (activeRepo) {
-    await setWorkspace(activeRepo.path);
+  if (!activeRepo) {
+    activeRepo = await ensureDefaultWorkspace();
+    repositories = await listRepositories();
   }
+
   useWorkspaceStore.getState().hydrate(repositories, activeRepo);
 
   let sessions = await listSessions();
@@ -333,7 +374,9 @@ export async function bootstrapAppData() {
   if (active?.workspaceId) {
     const linked = repositories.find((r) => r.id === active!.workspaceId);
     if (linked && linked.id !== activeRepo?.id) {
-      await useWorkspaceStore.getState().selectRepo(linked.id);
+      if (await trySetWorkspace(linked.path)) {
+        await useWorkspaceStore.getState().selectRepo(linked.id);
+      }
     }
   }
 }
